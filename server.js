@@ -1,11 +1,13 @@
 import express from "express";
 import { PrismaClient } from "@prisma/client";
+import cors from "cors";
 
 const prisma = new PrismaClient();
 const app = express();
 
 
 app.use(express.json());
+app.use(cors());
 
 // Listar todos os usuários
 app.get("/usuarios", async (req, res) => {
@@ -21,7 +23,7 @@ app.get("/usuarios", async (req, res) => {
 // Criar um novo usuário
 app.post("/usuarios", async (req, res) => {
   try {
-    const { email, name, age } = req.body;
+    const { email, name, age } = req.body;                                  
 
     // Validação básica
     if (!email || !name || !age) {
@@ -35,12 +37,17 @@ app.post("/usuarios", async (req, res) => {
     }
 
     const user = await prisma.user.create({
-      data: { email, name, age },
+      data: { email, name, age: parseInt(age) },
     });
 
     res.status(201).json({ message: "Usuário criado com sucesso", user });
   } catch (error) {
     console.error("Erro ao criar usuário:", error);
+    if (error instanceof prisma.PrismaClientKnownRequestError) {
+      if (error.code === 'P2002') {
+        return res.status(409).json({ error: "Este email já está em uso" });
+      }
+    }
     res.status(500).json({ error: "Erro interno do servidor" });
   }
 });
